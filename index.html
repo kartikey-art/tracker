@@ -1,0 +1,1398 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tracker">
+<meta name="theme-color" content="#F1F4F0">
+<title>Daily Task Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@1&display=swap">
+<style>
+@property --p { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+
+:root {
+  --canvas: #F1F4F0; --canvas2: #F6F8F5; --card: #FFFFFF;
+  --ink: #17201B; --ink2: #56625A; --ink3: #8A958D; --ghost: #C4CDC3;
+  --line: #DCE3DA; --line2: #EBEFE9;
+  --shadow: 0 1px 0 rgba(23,32,27,.04), 0 10px 28px -16px rgba(23,32,27,.22);
+  --scrim: rgba(15,22,18,.26);
+  --ok: #2E9E62; --warn: #D58A0B; --err: #E5484D;
+  --g1: #4CA35A; --g2: #2F6FDB; --g3: #D14D8A;
+  --r: 16px;
+  --f-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-body: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --f-serif: 'Instrument Serif', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #121714; --canvas2: #171D19; --card: #1B221E;
+    --ink: #E6ECE7; --ink2: #A6B1A9; --ink3: #758179; --ghost: #36413A;
+    --line: #2A3430; --line2: #222B26;
+    --shadow: 0 1px 0 rgba(0,0,0,.2), 0 10px 28px -16px rgba(0,0,0,.6);
+    --scrim: rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --canvas: #121714; --canvas2: #171D19; --card: #1B221E;
+  --ink: #E6ECE7; --ink2: #A6B1A9; --ink3: #758179; --ghost: #36413A;
+  --line: #2A3430; --line2: #222B26;
+  --shadow: 0 1px 0 rgba(0,0,0,.2), 0 10px 28px -16px rgba(0,0,0,.6);
+  --scrim: rgba(0,0,0,.5);
+  color-scheme: dark;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); -webkit-text-size-adjust: 100%; }
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  margin: 0; min-height: 100%;
+  background: var(--canvas); color: var(--ink);
+  font: 15px/1.45 var(--f-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(900px 520px at -5% -10%, color-mix(in srgb, var(--g1) 13%, transparent), transparent 70%),
+    radial-gradient(760px 480px at 105% 0%, color-mix(in srgb, var(--g2) 11%, transparent), transparent 70%),
+    radial-gradient(900px 620px at 50% 115%, color-mix(in srgb, var(--g3) 9%, transparent), transparent 70%);
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+input:focus-visible { outline: none; }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+/* ---------- top bar ---------- */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0 14px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand span { font: 500 12px/1 var(--f-mono); text-transform: uppercase; letter-spacing: .2em; white-space: nowrap; }
+.icon-btn { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink2); padding: 0; }
+.icon-btn:hover { color: var(--ink); }
+.greet { margin: 0; font: italic 21px/1.1 var(--f-serif); color: var(--ink2); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- tabs + legend ---------- */
+.tabs { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
+.tabbtns { display: flex; gap: 22px; }
+.tabbtns button { border: 0; background: none; padding: 10px 0 11px; font-weight: 600; font-size: 14px; color: var(--ink3); border-bottom: 2px solid transparent; margin-bottom: -1px; display: inline-flex; align-items: center; gap: 7px; }
+.tabbtns button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.badge { font: 600 11px/1 var(--f-mono); background: var(--ink); color: var(--canvas); border-radius: 999px; padding: 3px 7px; }
+.legend { display: flex; gap: 14px; padding-bottom: 12px; font-size: 12px; color: var(--ink2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 8px; height: 8px; border-radius: 3px; display: inline-block; }
+
+/* ---------- hero ---------- */
+.hero { margin: 26px 0 8px; overflow-x: clip; }
+.weekday {
+  margin: 0 0 0 -.03em;
+  font-family: var(--f-display);
+  font-weight: 800; font-stretch: 75%;
+  font-variation-settings: "wdth" 75, "opsz" 96;
+  font-size: clamp(64px, 13.5vw, 172px); line-height: .84; letter-spacing: -.025em;
+  background: linear-gradient(90deg, var(--ink) var(--p), var(--ghost) var(--p));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  transition: --p .9s cubic-bezier(.2,.7,.2,1);
+  width: fit-content; white-space: nowrap;
+}
+.weekday.enter { animation: rise .55s cubic-bezier(.2,.7,.2,1); }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+.bar { height: 5px; border-radius: 999px; background: var(--line2); margin: 18px 0 12px; overflow: hidden; }
+.bar span { display: block; height: 100%; border-radius: inherit; width: 0; transition: width .9s cubic-bezier(.2,.7,.2,1); }
+.meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--ink2); font-size: 14px; }
+.meta .when { display: inline-flex; align-items: center; gap: 10px; }
+.chip { font: 500 12px/1 var(--f-mono); padding: 4px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink2); }
+.mono { font-family: var(--f-mono); font-size: 13px; }
+
+/* ---------- date rail ---------- */
+.rail { display: flex; align-items: center; gap: 8px; margin: 18px 0 18px; }
+.btn { height: 38px; padding: 0 14px; border-radius: 11px; border: 1px solid var(--line); background: var(--card); font-weight: 600; font-size: 13px; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn:hover:not(:disabled) { border-color: var(--ink3); }
+.btn:disabled { color: var(--ink3); cursor: default; }
+.btn.sq { width: 38px; padding: 0; }
+.btn.solid { background: var(--ink); color: var(--canvas); border-color: var(--ink); }
+.datein { height: 38px; padding: 0 10px; border-radius: 11px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: 500 13px var(--f-mono); min-width: 0; }
+
+/* ---------- board ---------- */
+.board { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+.lane {
+  grid-column: span var(--span, 2);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow);
+  padding: 14px 12px 8px; display: flex; flex-direction: column; min-width: 0;
+}
+.lane.major { padding: 16px 14px 10px; }
+.lane-h { display: flex; align-items: center; gap: 9px; padding: 0 4px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lc); flex: none; }
+.lane-h h2 { margin: 0; flex: 1; min-width: 0; font: 650 17px/1.2 var(--f-display); font-variation-settings: "wdth" 88, "opsz" 24; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lane.major .lane-h h2 { font-size: 20px; }
+.count { font: 500 12px/1 var(--f-mono); color: var(--ink3); padding: 4px 8px; border-radius: 999px; border: 1px solid transparent; }
+.count.full { color: #fff; background: var(--lc); }
+.tasks { list-style: none; margin: 8px 0 4px; padding: 0; }
+.empty { margin: 14px 4px 12px; color: var(--ink3); font-size: 13px; }
+
+.task { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 6px; padding: 7px 6px 7px 8px; border-radius: 10px; position: relative; }
+.tasks > .task + .task::before { content: ""; position: absolute; left: 8px; right: 8px; top: 0; border-top: 1px solid var(--line2); }
+.task.flagged { background: color-mix(in srgb, var(--cc) 6%, transparent); box-shadow: inset 3px 0 0 var(--cc); }
+.task.flagged::before, .task.flagged + .task::before { display: none; }
+.row { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.check { flex: none; width: 20px; height: 20px; margin-top: 1px; border-radius: 6px; border: 1.6px solid var(--ink3); background: transparent; display: grid; place-items: center; color: transparent; padding: 0; position: relative; transition: background .15s, border-color .15s; }
+.check::after { content: ""; position: absolute; inset: -10px; }
+.check svg { width: 13px; height: 13px; }
+.task.done > .row .check, .sub.done .check { background: var(--lc); border-color: var(--lc); color: #fff; }
+.text { flex: 1; min-width: 0; overflow-wrap: anywhere; padding-top: 1px; }
+.task.done > .row .text { text-decoration: line-through; text-decoration-color: var(--ink3); color: var(--ink3); }
+.pri { flex: none; min-width: 20px; height: 20px; border-radius: 6px; border: 0; background: var(--lc); color: #fff; font: 600 12px/20px var(--f-mono); padding: 0 5px; margin-top: 1px; text-align: center; }
+span.pri { cursor: default; }
+.task.done .pri { opacity: .45; }
+.subchip { flex: none; display: inline-flex; align-items: center; gap: 2px; height: 22px; padding: 0 7px 0 4px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink2); font: 500 11px var(--f-mono); }
+.subchip svg { width: 13px; height: 13px; }
+.subchip.all { color: var(--lc); border-color: color-mix(in srgb, var(--lc) 45%, transparent); }
+.acts { display: flex; gap: 1px; align-items: center; }
+.acts button, .sub-acts button { width: 26px; height: 26px; border: 0; background: transparent; color: var(--ink3); border-radius: 7px; display: grid; place-items: center; padding: 0; }
+.acts button:hover:not(:disabled), .sub-acts button:hover { background: var(--line2); color: var(--ink); }
+.acts button:disabled { opacity: .28; cursor: default; }
+.acts .danger:hover, .sub-acts .danger:hover { color: var(--err); }
+.pill { grid-column: 1 / -1; justify-self: start; margin: 5px 0 0 28px; font: 600 11px/1.5 var(--f-body); color: var(--cc); background: color-mix(in srgb, var(--cc) 13%, transparent); padding: 1px 9px; border-radius: 999px; }
+input.edit { flex: 1; min-width: 0; font: inherit; color: var(--ink); border: 1.5px solid var(--lc); border-radius: 7px; padding: 0 6px; background: var(--card); outline: none; }
+
+.subs { grid-column: 1 / -1; margin: 8px 0 2px 28px; padding: 8px 10px 6px; border-radius: 10px; background: var(--canvas2); border: 1px solid var(--line2); }
+.subs-h { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ink2); }
+.subs-h .count { padding: 3px 7px; }
+.subs ul { list-style: none; margin: 4px 0; padding: 0; }
+.sub { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+.sub .check { width: 16px; height: 16px; border-radius: 5px; margin-top: 0; }
+.sub .check svg { width: 11px; height: 11px; }
+.sub.done .text { text-decoration: line-through; color: var(--ink3); }
+.sub-acts { display: flex; gap: 1px; }
+.sub-acts button { width: 24px; height: 24px; }
+.subadd { width: 100%; border: 0; border-top: 1px dashed var(--line); background: transparent; font: inherit; font-size: 14px; color: var(--ink); padding: 7px 0 3px; outline: none; }
+
+.add { display: flex; align-items: center; gap: 8px; margin-top: auto; padding: 8px 6px 4px; border-top: 1px dashed var(--line); color: var(--ink3); cursor: text; }
+.add .plus { font: 500 16px/1 var(--f-mono); width: 20px; text-align: center; }
+.add input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--ink); padding: 6px 0; outline: none; }
+::placeholder { color: var(--ink3); opacity: 1; }
+
+/* ---------- open items ---------- */
+.open-head { margin: 26px 0 18px; }
+.open-head h1 { margin: 0; font: 800 clamp(44px, 8vw, 88px)/.9 var(--f-display); font-variation-settings: "wdth" 75, "opsz" 96; font-stretch: 75%; letter-spacing: -.02em; }
+.open-head p { margin: 10px 0 0; color: var(--ink2); }
+.open-grid .lane { grid-column: auto; }
+.open-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; align-items: start; }
+.oi-meta { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 5px 0 0 28px; }
+.oi-meta .pill { margin: 0; }
+.datebtn { border: 0; background: none; padding: 2px 0; font: 500 11px var(--f-mono); color: var(--ink3); }
+.datebtn:hover { color: var(--ink); text-decoration: underline; }
+.flagbtn { width: 26px; height: 22px; border: 0; background: none; color: var(--ink3); border-radius: 6px; display: grid; place-items: center; padding: 0; }
+.flagbtn:hover { background: var(--line2); color: var(--ink); }
+.oi .subs { padding-bottom: 4px; }
+.all-clear { text-align: left; padding: 40px 0 20px; }
+.all-clear p { color: var(--ink2); font-size: 16px; margin: 12px 0 0; }
+
+/* ---------- footer ---------- */
+.foot { margin: 30px 0 28px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap; font-size: 13px; color: var(--ink2); }
+.status { display: inline-flex; align-items: center; gap: 7px; }
+.status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.status.saving i { background: var(--warn); }
+.status.error i { background: var(--err); }
+.status.error { color: var(--err); }
+.foot .sync { color: var(--ink3); }
+.foot .sync.stale { color: var(--warn); font-weight: 600; }
+.foot .spacer { flex: 1; }
+.foot .btn { height: 34px; }
+
+/* ---------- bottom bar (phones) ---------- */
+.bottombar { display: none; }
+
+/* ---------- sheets ---------- */
+.scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 40; animation: fade .15s ease-out; }
+@keyframes fade { from { opacity: 0; } }
+.sheet { position: fixed; z-index: 41; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 60px -18px rgba(0,0,0,.35); padding: 16px; width: 280px; animation: pop .16s ease-out; }
+@keyframes pop { from { opacity: 0; transform: translateY(6px) scale(.98); } }
+.sheet.pop { left: var(--x); top: var(--y); }
+.sheet.center { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(94vw, 560px); max-height: min(88vh, 760px); overflow: auto; animation: fade .16s ease-out; }
+.grab { display: none; }
+.sheet h3 { margin: 0 0 12px; font: 650 18px/1.2 var(--f-display); font-variation-settings: "wdth" 88; display: flex; align-items: center; justify-content: space-between; }
+.prigrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.prigrid button { height: 44px; border-radius: 11px; border: 1px solid var(--line); background: var(--canvas2); font: 600 16px var(--f-mono); }
+.prigrid button:hover { border-color: var(--ink3); }
+.prigrid button[aria-pressed="true"] { background: var(--lc, var(--ink)); color: #fff; border-color: transparent; }
+.sheet .wide { width: 100%; margin-top: 8px; }
+.opts { display: flex; flex-direction: column; gap: 4px; }
+.opts button { display: flex; align-items: center; gap: 10px; min-height: 44px; border: 0; border-radius: 11px; background: transparent; padding: 0 10px; text-align: left; font-weight: 500; }
+.opts button:hover { background: var(--line2); }
+.opts i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.opts .tick { margin-left: auto; color: var(--ink); }
+
+.set-sec { padding: 14px 0; border-top: 1px solid var(--line2); }
+.set-sec:first-of-type { border-top: 0; padding-top: 0; }
+.set-sec > label, .set-sec > .lbl { display: block; font-size: 13px; font-weight: 600; color: var(--ink2); margin-bottom: 8px; }
+.tin { width: 100%; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--canvas2); color: var(--ink); font: inherit; padding: 0 12px; outline: none; }
+.tin:focus { border-color: var(--ink3); background: var(--card); }
+.lanes-ed { display: flex; flex-direction: column; gap: 8px; }
+.lane-row { display: flex; align-items: center; gap: 6px; }
+.lane-row .tin { flex: 1; min-width: 0; height: 38px; }
+.swatch { width: 30px; height: 30px; border-radius: 9px; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); background: var(--sw); padding: 0; flex: none; }
+.tog { height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent; font-size: 12px; font-weight: 600; color: var(--ink3); flex: none; }
+.tog[aria-pressed="true"] { background: var(--ink); color: var(--canvas); border-color: var(--ink); }
+.mini { width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--ink3); display: grid; place-items: center; padding: 0; flex: none; }
+.mini:hover:not(:disabled) { background: var(--line2); color: var(--ink); }
+.mini:disabled { opacity: .3; cursor: default; }
+.mini.danger:hover, .mini.confirm { color: var(--err); }
+.mini.confirm { width: auto; padding: 0 8px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--err) 12%, transparent); }
+.palette { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 0 4px 36px; }
+.palette button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); background: var(--sw); padding: 0; }
+.palette button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 11px; padding: 3px; gap: 3px; background: var(--canvas2); }
+.seg button { border: 0; background: transparent; border-radius: 8px; height: 32px; padding: 0 12px; font-size: 13px; font-weight: 600; color: var(--ink2); }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.note { font-size: 13px; color: var(--ink2); margin: 0 0 10px; }
+.flbl { display: block; font-size: 13px; font-weight: 600; color: var(--ink2); margin: 12px 0 6px; }
+.err { color: var(--err); font-size: 13px; font-weight: 500; margin: 10px 0 0; }
+[data-signin] .btn.solid { margin-top: 16px; height: 44px; }
+.btn.plain { border-color: transparent; background: transparent; color: var(--ink2); }
+.linkbtn { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 12px); background: var(--ink); color: var(--canvas); padding: 10px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 60; max-width: 90vw; text-align: center; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- hover vs touch ---------- */
+@media (hover: hover) and (pointer: fine) {
+  .task > .acts { opacity: 0; transition: opacity .12s; }
+  .task:hover > .acts, .task:focus-within > .acts { opacity: 1; }
+  .sub-acts { opacity: 0; transition: opacity .12s; }
+  .sub:hover .sub-acts, .sub:focus-within .sub-acts { opacity: 1; }
+}
+@media (hover: none), (pointer: coarse) {
+  .task > .acts { display: none; grid-column: 1 / -1; justify-content: flex-end; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .task.open > .acts { display: flex; }
+  .task.open { background: var(--canvas2); }
+  .acts button { width: 44px; height: 40px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  .sub-acts button { width: 36px; height: 36px; }
+  .check { width: 24px; height: 24px; margin-top: -1px; }
+  .sub .check { width: 20px; height: 20px; }
+  .pri { min-width: 24px; height: 24px; line-height: 24px; margin-top: -1px; }
+  .text { padding-top: 2px; }
+  .pill, .oi-meta { margin-left: 32px; }
+  .subs { margin-left: 32px; }
+  .add input, .subadd { font-size: 16px; }
+  input.edit, .tin { font-size: 16px; }
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 1020px) {
+  .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lane { grid-column: span 1; }
+  .lane.lone { grid-column: span 2; }
+}
+@media (max-width: 700px) {
+  .wrap { padding: 0 16px; }
+  .top { padding: 12px 0 10px; }
+  .brand span { font-size: 10.5px; letter-spacing: .13em; }
+  .brand { gap: 8px; }
+  .greet { font-size: 16px; white-space: normal; line-height: 1.15; max-width: 48%; }
+  .tabs { border-bottom: 0; }
+  .tabbtns { display: none; }
+  .legend { padding: 4px 0 0; }
+  .hero { margin-top: 18px; }
+  .weekday { font-size: 22vw; }
+  .rail .datein { flex: 1; }
+  .rail .today { flex: none; }
+  .bottombar {
+    display: flex; gap: 8px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--card) 88%, transparent);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    border-top: 1px solid var(--line);
+  }
+  .bottombar button { flex: 1; height: 48px; border-radius: 13px; border: 0; background: transparent; font-weight: 600; font-size: 14px; color: var(--ink2); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .bottombar button[aria-selected="true"] { background: var(--ink); color: var(--canvas); }
+  .bottombar .badge { background: var(--canvas); color: var(--ink); }
+  .bottombar button:not([aria-selected="true"]) .badge { background: var(--ink); color: var(--canvas); }
+  .foot { margin-bottom: 96px; }
+  .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .sheet, .sheet.center, .sheet.pop {
+    left: 0; right: 0; top: auto; bottom: 0; transform: none; width: auto;
+    border-radius: 22px 22px 0 0; border-bottom: 0;
+    padding: 10px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    max-height: 88vh; overflow: auto; animation: up .22s cubic-bezier(.2,.7,.2,1);
+  }
+  @keyframes up { from { transform: translateY(40px); opacity: .4; } }
+  .grab { display: block; width: 38px; height: 5px; border-radius: 99px; background: var(--line); margin: 0 auto 12px; }
+  .prigrid button { height: 52px; }
+}
+@media (max-width: 640px) {
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .lane, .lane.lone { grid-column: span 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span>Daily Task Tracker</span>
+      <button class="icon-btn" data-act="settings" aria-label="Settings" id="gear"></button>
+    </div>
+    <p class="greet" id="greet"></p>
+  </header>
+  <nav class="tabs" id="tabs"></nav>
+  <main id="main"></main>
+  <footer class="foot" id="foot"></footer>
+</div>
+<nav class="bottombar" id="bottombar" role="tablist"></nav>
+<div id="sheetRoot"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="restoreFile" accept="application/json,.json" hidden>
+
+<script>
+(function () {
+'use strict';
+
+/* ================= constants ================= */
+const PALETTE = ['#4CA35A', '#2F6FDB', '#D14D8A', '#C99A12', '#1B9FB0', '#5B5FC7', '#E07A9B', '#7C8F2A', '#9A6B3F', '#5E6B7A'];
+const DEFAULT_LANES = [
+  { id: 'health', name: 'Health & Fitness', color: '#4CA35A', major: false },
+  { id: 'work', name: 'Work – Eli Lilly', color: '#2F6FDB', major: true },
+  { id: 'gre', name: 'GRE', color: '#D14D8A', major: true },
+  { id: 'mba', name: 'MBA', color: '#C99A12', major: false },
+  { id: 'relations', name: 'Relations', color: '#1B9FB0', major: false }
+];
+const DEFAULT_NAME = 'Kartikey';
+const CATS = {
+  concept: { label: 'Conceptual', short: 'Concept', color: '#8B5CF6' },
+  ops: { label: 'Operational', short: 'Ops', color: '#E8890C' },
+  today: { label: 'Complete by today', short: 'Today', color: '#E5484D' }
+};
+const LS = 'dtt:';
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const COARSE = window.matchMedia('(hover: none), (pointer: coarse)');
+
+/* ================= icons ================= */
+const I = {
+  check: '<path d="M3.5 8.5l3 3 6-7"/>',
+  chevDown: '<path d="M4.5 6.5L8 10l3.5-3.5"/>',
+  chevUp: '<path d="M4.5 9.5L8 6l3.5 3.5"/>',
+  hash: '<path d="M6.5 2.5l-1.5 11M11 2.5l-1.5 11M3 6h10.5M2.5 10H13"/>',
+  flag: '<path d="M3.5 14V2.5M3.5 3h8.5l-2 3 2 3H3.5"/>',
+  pencil: '<path d="M10.5 2.5l3 3L6 13H3v-3z"/>',
+  up: '<path d="M8 13V3M4 7l4-4 4 4"/>',
+  down: '<path d="M8 3v10M4 9l4 4 4-4"/>',
+  x: '<path d="M4 4l8 8M12 4l-8 8"/>',
+  sub: '<path d="M3.5 2.5v5a2 2 0 002 2h8M10.5 6.5l3 3-3 3"/>',
+  left: '<path d="M10 3L5 8l5 5"/>',
+  right: '<path d="M6 3l5 5-5 5"/>',
+  gear: '<path d="M2 4.5h7M12.5 4.5H14M2 11.5h1.5M7 11.5h7"/><circle cx="10.75" cy="4.5" r="1.75"/><circle cx="5.25" cy="11.5" r="1.75"/>',
+  board: '<rect x="2" y="2.5" width="5" height="11" rx="1.5"/><rect x="9" y="2.5" width="5" height="7" rx="1.5"/>',
+  list: '<path d="M6 4h8M6 8h8M6 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/>',
+  plus: '<path d="M8 3v10M3 8h10"/>'
+};
+const ic = (n, s = 16) => `<svg viewBox="0 0 16 16" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+
+/* ================= helpers ================= */
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+const pad = (n) => String(n).padStart(2, '0');
+const dstr = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseD = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const todayStr = () => dstr(new Date());
+const addDays = (s, n) => { const d = parseD(s); d.setDate(d.getDate() + n); return dstr(d); };
+const diffDays = (a, b) => Math.round((parseD(a) - parseD(b)) / 864e5);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), ms))]);
+function relLabel(s) {
+  const n = diffDays(s, todayStr());
+  if (n === 0) return 'Today';
+  if (n === -1) return 'Yesterday';
+  if (n === 1) return 'Tomorrow';
+  return n < 0 ? `${-n} days ago` : `In ${n} days`;
+}
+const weekday = (s) => parseD(s).toLocaleDateString('en-US', { weekday: 'long' });
+const fullDate = (s) => parseD(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+function shortLabel(s) {
+  const n = diffDays(s, todayStr());
+  if (n === 0) return 'Today';
+  if (n === -1) return 'Yesterday';
+  if (n === 1) return 'Tomorrow';
+  return parseD(s).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/* ================= normalisation ================= */
+const normPri = (p) => { p = Number(p); return Number.isInteger(p) && p >= 1 && p <= 9 ? p : null; };
+const normCat = (c) => (typeof c === 'string' && CATS[c] ? c : null);
+const normText = (t) => (typeof t === 'string' ? t.trim().slice(0, 1000) : '');
+const normId = (id) => (typeof id === 'string' && /^[\w-]{1,40}$/.test(id) ? id : uid());
+function normSub(s) {
+  if (!s || typeof s !== 'object') return null;
+  const text = normText(s.text); if (!text) return null;
+  return { id: normId(s.id), text, done: !!s.done };
+}
+function normTask(t) {
+  if (!t || typeof t !== 'object') return null;
+  const text = normText(t.text); if (!text) return null;
+  return { id: normId(t.id), text, done: !!t.done, pri: normPri(t.pri), cat: normCat(t.cat), subs: Array.isArray(t.subs) ? t.subs.map(normSub).filter(Boolean) : [] };
+}
+function normDay(d) {
+  const out = { lanes: {}, u: 0 };
+  if (!d || typeof d !== 'object') return out;
+  out.u = Number(d.u) || 0;
+  const src = d.lanes && typeof d.lanes === 'object' && !Array.isArray(d.lanes) ? d.lanes : d;
+  for (const k of Object.keys(src)) {
+    if (!/^[\w-]{1,40}$/.test(k) || !Array.isArray(src[k])) continue;
+    const arr = src[k].map(normTask).filter(Boolean);
+    if (arr.length) out.lanes[k] = arr;
+  }
+  return out;
+}
+function normLanes(arr) {
+  if (!Array.isArray(arr)) return DEFAULT_LANES.map((l) => ({ ...l }));
+  const seen = new Set(); const out = [];
+  for (const l of arr) {
+    if (!l || typeof l !== 'object') continue;
+    const id = typeof l.id === 'string' && /^[\w-]{1,40}$/.test(l.id) ? l.id : null;
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name: normText(l.name).slice(0, 60) || 'Untitled lane', color: /^#[0-9a-fA-F]{6}$/.test(l.color) ? l.color : PALETTE[out.length % PALETTE.length], major: !!l.major });
+  }
+  return out.length ? out : DEFAULT_LANES.map((l) => ({ ...l }));
+}
+const isEmptyDay = (day) => !day || !Object.values(day.lanes || {}).some((a) => a.length);
+
+/* ================= state ================= */
+const S = {
+  view: 'board', date: todayStr(), name: DEFAULT_NAME, lanes: DEFAULT_LANES.map((l) => ({ ...l })),
+  days: {}, openSubs: new Set(), openActions: null, editing: null, drafts: {}, sheet: null,
+  status: 'saved', sync: 'off', email: null,
+  dirty: new Set(), profileDirty: false, profileU: 0,
+  theme: 'light', lastP: null, animateHero: true, pendingFocus: null
+};
+let rendering = false;
+
+/* ================= local cache ================= */
+let lsOK = false;
+try { localStorage.setItem(LS + 't', '1'); localStorage.removeItem(LS + 't'); lsOK = true; } catch (e) { lsOK = false; }
+function cacheDay(d) {
+  if (!lsOK) return;
+  try { const day = S.days[d]; if (!day) localStorage.removeItem(LS + 'board:' + d); else localStorage.setItem(LS + 'board:' + d, JSON.stringify(day)); }
+  catch (e) { S.status = 'error'; toast('Storage is full. Back up, then clear some old days.'); }
+}
+function cacheProfile() {
+  if (!lsOK) return;
+  try { localStorage.setItem(LS + 'profile', JSON.stringify({ name: S.name, lanes: S.lanes, u: S.profileU })); } catch (e) {}
+}
+function rewriteCache() {
+  if (!lsOK) return;
+  try {
+    const keys = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(LS + 'board:')) keys.push(k); }
+    keys.forEach((k) => localStorage.removeItem(k));
+    Object.keys(S.days).forEach(cacheDay);
+  } catch (e) {}
+}
+function loadLocal() {
+  if (!lsOK) return;
+  try {
+    const p = JSON.parse(localStorage.getItem(LS + 'profile') || 'null');
+    if (p) { S.lanes = normLanes(p.lanes); S.profileU = Number(p.u) || 0; if (typeof p.name === 'string' && p.name.trim()) S.name = p.name.trim().slice(0, 60); }
+    const dz = JSON.parse(localStorage.getItem(LS + 'dirty') || '[]');
+    if (Array.isArray(dz)) dz.forEach((d) => { if (DAY_RE.test(d)) S.dirty.add(d); });
+    S.profileDirty = localStorage.getItem(LS + 'pdirty') === '1';
+    S.theme = localStorage.getItem(LS + 'theme') === 'auto' ? 'auto' : 'light';
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(LS + 'board:')) continue;
+      const d = k.slice((LS + 'board:').length);
+      if (!DAY_RE.test(d)) continue;
+      const day = normDay(JSON.parse(localStorage.getItem(k)));
+      if (!isEmptyDay(day) || day.u) S.days[d] = day;
+    }
+  } catch (e) {}
+}
+
+/* ================= saving ================= */
+let saveT = null;
+function persistDirty() {
+  if (!lsOK) return;
+  try { localStorage.setItem(LS + 'dirty', JSON.stringify([...S.dirty])); localStorage.setItem(LS + 'pdirty', S.profileDirty ? '1' : ''); } catch (e) {}
+}
+function markDirty(d) {
+  const day = S.days[d] || (S.days[d] = { lanes: {}, u: 0 });
+  day.u = Date.now();
+  S.dirty.add(d); persistDirty();
+  setStatus('saving'); cacheDay(d);
+  clearTimeout(saveT); saveT = setTimeout(() => { if (S.status === 'saving') setStatus('saved'); }, 250);
+  Sync.schedule();
+}
+function saveProfile() {
+  S.profileU = Date.now(); S.profileDirty = true; persistDirty();
+  cacheProfile(); applyGlows(); setStatus('saved');
+  Sync.schedule();
+}
+function setStatus(s) { S.status = s; renderFoot(); }
+
+/* ================= sync (Supabase) ================= */
+const SB_URL = 'https://qsmnzhjyqabytjdusiuu.supabase.co';
+const SB_KEY = 'sb_publishable_ON9PJzwUSodMgbi3uCqjXg_vfIvC2XC';
+const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+let sb = null, session = null, channel = null;
+
+function setSync(state) {
+  if (state) S.sync = state;
+  else if (!sb) S.sync = 'nolib';
+  else if (!session) S.sync = 'signedout';
+  else if (navigator.onLine === false) S.sync = 'offline';
+  else if (S.sync === 'nolib' || S.sync === 'signedout' || S.sync === 'off') S.sync = 'ok';
+  renderFoot();
+}
+
+const Sync = {
+  t: null, busy: false, again: false, retry: 3000, rt: null, lastPull: 0,
+  ready() { return !!(sb && session && navigator.onLine !== false); },
+  schedule(ms = 700) { clearTimeout(this.t); this.t = setTimeout(() => this.push(), ms); },
+  async push() {
+    if (!this.ready()) { setSync(); return; }
+    if (this.busy) { this.again = true; return; }
+    if (!S.dirty.size && !S.profileDirty) { setSync('ok'); return; }
+    this.busy = true; setSync('syncing');
+    let failed = false;
+    try {
+      const uid = session.user.id;
+      const dates = [...S.dirty];
+      for (let i = 0; i < dates.length; i += 200) {
+        const chunk = dates.slice(i, i + 200); const stamp = {};
+        const rows = chunk.map((d) => {
+          const day = S.days[d] || { lanes: {}, u: Date.now() };
+          stamp[d] = day.u;
+          return { user_id: uid, day: d, lanes: day.lanes, updated_at: new Date(day.u || Date.now()).toISOString() };
+        });
+        const { error } = await withTimeout(sb.from('days').upsert(rows, { onConflict: 'user_id,day' }), 15000);
+        if (error) throw error;
+        chunk.forEach((d) => { if (!S.days[d] || S.days[d].u === stamp[d]) S.dirty.delete(d); });
+      }
+      if (S.profileDirty) {
+        const u = S.profileU || Date.now();
+        const { error } = await withTimeout(sb.from('profiles').upsert({ user_id: uid, name: S.name, lanes: S.lanes, updated_at: new Date(u).toISOString() }, { onConflict: 'user_id' }), 15000);
+        if (error) throw error;
+        if ((S.profileU || u) === u) S.profileDirty = false;
+      }
+      persistDirty(); this.retry = 3000;
+    } catch (e) { failed = true; }
+    this.busy = false;
+    if (failed) {
+      setSync(navigator.onLine === false ? 'offline' : 'error');
+      clearTimeout(this.rt); this.rt = setTimeout(() => this.push(), this.retry);
+      this.retry = Math.min(this.retry * 2, 60000);
+      return;
+    }
+    if (this.again || S.dirty.size || S.profileDirty) { this.again = false; this.schedule(150); }
+    else setSync('ok');
+  },
+  async pull() {
+    if (!this.ready()) { setSync(); return; }
+    this.lastPull = Date.now();
+    try {
+      setSync('syncing');
+      const rows = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await withTimeout(sb.from('days').select('day,lanes,updated_at').order('day').range(from, from + 999), 15000);
+        if (error) throw error;
+        rows.push(...data);
+        if (data.length < 1000) break;
+      }
+      let changed = false; const remote = new Set();
+      for (const r of rows) { remote.add(String(r.day).slice(0, 10)); if (applyRemoteDay(r)) changed = true; }
+      // anything only on this device goes up
+      for (const d of Object.keys(S.days)) {
+        if (!remote.has(d) && !isEmptyDay(S.days[d]) && !S.dirty.has(d)) { S.days[d].u = S.days[d].u || Date.now(); S.dirty.add(d); }
+      }
+      const { data: p, error: pe } = await withTimeout(sb.from('profiles').select('name,lanes,updated_at').maybeSingle(), 15000);
+      if (pe) throw pe;
+      if (p) { if (applyRemoteProfile(p)) changed = true; }
+      else { S.profileDirty = true; if (!S.profileU) S.profileU = Date.now(); }
+      persistDirty();
+      if (changed) { autoOpenSubs(S.date); render(); }
+      this.push();
+    } catch (e) { setSync(navigator.onLine === false ? 'offline' : 'error'); }
+  }
+};
+
+function applyRemoteDay(r) {
+  const d = r && r.day ? String(r.day).slice(0, 10) : null;
+  if (!d || !DAY_RE.test(d) || S.dirty.has(d)) return false;
+  const ru = Date.parse(r.updated_at) || 0;
+  const local = S.days[d];
+  if (local && (local.u || 0) >= ru) return false;
+  const nd = normDay({ lanes: r.lanes }); nd.u = ru;
+  S.days[d] = nd; cacheDay(d);
+  return true;
+}
+function applyRemoteProfile(p) {
+  const ru = Date.parse(p.updated_at) || 0;
+  if (S.profileU && S.profileU >= ru) return false;
+  S.lanes = normLanes(p.lanes);
+  if (typeof p.name === 'string' && p.name.trim()) S.name = p.name.trim().slice(0, 60);
+  S.profileU = ru; S.profileDirty = false; persistDirty();
+  cacheProfile(); applyGlows();
+  return true;
+}
+function subscribe() {
+  if (!sb || !session) return;
+  if (channel) { sb.removeChannel(channel); channel = null; }
+  const uid = session.user.id;
+  channel = sb.channel('tracker-' + uid)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'days', filter: 'user_id=eq.' + uid }, (pl) => {
+      if (pl.new && applyRemoteDay(pl.new)) { if (String(pl.new.day).slice(0, 10) === S.date) autoOpenSubs(S.date); render(); }
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'user_id=eq.' + uid }, (pl) => {
+      if (pl.new && applyRemoteProfile(pl.new)) render();
+    })
+    .subscribe();
+}
+function loadSupabase() {
+  return new Promise((res) => {
+    if (window.supabase && window.supabase.createClient) return res(true);
+    const el = document.createElement('script');
+    el.src = SB_LIB; el.async = true;
+    el.onload = () => res(!!(window.supabase && window.supabase.createClient));
+    el.onerror = () => res(false);
+    document.head.appendChild(el);
+  });
+}
+async function initSync() {
+  const ok = await loadSupabase();
+  if (!ok) { setSync(); setTimeout(() => { if (!sb) initSync(); }, 30000); return; }
+  if (sb) return;
+  sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'dtt-auth' } });
+  sb.auth.onAuthStateChange((ev, sess) => {
+    const wasId = session ? session.user.id : null;
+    session = sess || null; S.email = sess ? sess.user.email : null;
+    setTimeout(() => {
+      if (session && session.user.id !== wasId) { subscribe(); Sync.pull(); }
+      if (!session && channel) { sb.removeChannel(channel); channel = null; }
+      if (ev === 'INITIAL_SESSION' && !session && !S.sheet) openSheet({ type: 'signin' });
+      setSync(); render();
+    }, 0);
+  });
+}
+async function signOut() {
+  if (S.dirty.size || S.profileDirty) { toast("Some changes haven't synced yet. Get online, then try again."); Sync.push(); return; }
+  try { await sb.auth.signOut(); } catch (e) {}
+  // tasks live in your account now; clear this device's copy
+  S.days = {}; S.dirty.clear(); S.profileDirty = false; S.profileU = 0; persistDirty();
+  if (lsOK) { try { const ks = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(LS + 'board:')) ks.push(k); } ks.forEach((k) => localStorage.removeItem(k)); } catch (e) {} }
+  S.sheet = null; render(); toast('Signed out');
+}
+
+/* ================= data ops ================= */
+function laneArr(date, lane, create) {
+  let day = S.days[date];
+  if (!day) { if (!create) return []; day = S.days[date] = { lanes: {} }; }
+  if (!day.lanes[lane]) { if (!create) return []; day.lanes[lane] = []; }
+  return day.lanes[lane];
+}
+function find(date, id) {
+  const day = S.days[date]; if (!day) return null;
+  for (const lane of Object.keys(day.lanes)) {
+    const arr = day.lanes[lane]; const idx = arr.findIndex((t) => t.id === id);
+    if (idx > -1) return { day, lane, arr, idx, task: arr[idx] };
+  }
+  return null;
+}
+function cleanup(date) {
+  const day = S.days[date]; if (!day) return;
+  for (const k of Object.keys(day.lanes)) if (!day.lanes[k].length) delete day.lanes[k];
+}
+function commit(date) { cleanup(date); markDirty(date); render(); }
+const priKey = (t) => (t.pri == null ? 99 : t.pri);
+function displayOrder(arr) {
+  return arr.map((t, i) => ({ t, i })).sort((a, b) => priKey(a.t) - priKey(b.t) || a.i - b.i).map((x) => x.t);
+}
+function autoOpenSubs(date) {
+  const day = S.days[date]; if (!day) return;
+  for (const arr of Object.values(day.lanes)) for (const t of arr) if (t.subs.length) S.openSubs.add(t.id);
+}
+function laneById(id) { return S.lanes.find((l) => l.id === id); }
+function openCount() {
+  const ids = new Set(S.lanes.map((l) => l.id)); let n = 0;
+  for (const day of Object.values(S.days)) for (const [lane, arr] of Object.entries(day.lanes)) if (ids.has(lane)) n += arr.filter((t) => !t.done).length;
+  return n;
+}
+function setDate(d) {
+  if (!DAY_RE.test(d)) return;
+  if (S.editing) commitEdit(true);
+  S.date = d; S.openActions = null; S.lastP = 0; S.animateHero = true;
+  autoOpenSubs(d);
+  render();
+}
+
+/* ================= rendering ================= */
+function greeting() {
+  const h = new Date().getHours();
+  return `Good ${h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'}, ${S.name}`;
+}
+function applyGlows() {
+  const r = document.documentElement.style;
+  const c = S.lanes.map((l) => l.color);
+  r.setProperty('--g1', c[0] || '#4CA35A'); r.setProperty('--g2', c[1] || c[0] || '#2F6FDB'); r.setProperty('--g3', c[2] || c[0] || '#D14D8A');
+}
+function applyTheme() {
+  if (S.theme === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', 'light');
+}
+
+function render() {
+  rendering = true;
+  const a = document.activeElement;
+  let key = (a && a.dataset && a.dataset.key) || S.pendingFocus;
+  let ss = null, se = null;
+  if (a && a.dataset && a.dataset.key) { try { ss = a.selectionStart; se = a.selectionEnd; } catch (e) {} }
+  S.pendingFocus = null;
+
+  $('#greet').textContent = greeting();
+  renderTabs();
+  $('#main').innerHTML = S.view === 'board' ? boardHTML() : openHTML();
+  renderFoot();
+  renderSheet();
+
+  if (key) {
+    const el = document.querySelector(`[data-key="${CSS.escape(key)}"]`);
+    if (el) { el.focus({ preventScroll: true }); if (ss != null) { try { el.setSelectionRange(ss, se); } catch (e) {} } }
+  }
+  // animate the weekday fill + bar from the previous value
+  const h = $('#main .weekday[data-p]');
+  if (h) {
+    const p = Number(h.dataset.p); const bar = $('#main .bar span');
+    void h.offsetWidth;
+    h.style.setProperty('--p', p + '%'); if (bar) bar.style.width = p + '%';
+    S.lastP = p;
+  }
+  fitWeekday();
+  S.animateHero = false;
+  rendering = false;
+}
+function fitWeekday() {
+  const h = $('#main .weekday'); if (!h) return;
+  h.style.fontSize = '';
+  const avail = h.parentElement.clientWidth; const w = h.scrollWidth;
+  if (w > avail && avail > 0) h.style.fontSize = (parseFloat(getComputedStyle(h).fontSize) * (avail / w) * 0.98) + 'px';
+}
+
+function renderTabs() {
+  const n = openCount(); const b = (v) => (S.view === v ? 'true' : 'false');
+  const badge = n ? `<span class="badge">${n}</span>` : '';
+  $('#tabs').innerHTML = `
+    <div class="tabbtns" role="tablist">
+      <button role="tab" aria-selected="${b('board')}" data-act="view" data-v="board">Today's Board</button>
+      <button role="tab" aria-selected="${b('open')}" data-act="view" data-v="open">Open Items${badge}</button>
+    </div>
+    <div class="legend">${Object.values(CATS).map((c) => `<span><i style="background:${c.color}"></i>${c.short}</span>`).join('')}</div>`;
+  $('#bottombar').innerHTML = `
+    <button role="tab" aria-selected="${b('board')}" data-act="view" data-v="board">${ic('board')}Board</button>
+    <button role="tab" aria-selected="${b('open')}" data-act="view" data-v="open">${ic('list')}Open Items${badge}</button>`;
+}
+
+function renderFoot() {
+  const st = { saving: ['saving', 'Saving…'], saved: ['', 'Saved'], error: ['error', "Couldn't save"] }[S.status] || ['', 'Saved'];
+  const pend = S.dirty.size + (S.profileDirty ? 1 : 0);
+  const syncTxt = {
+    ok: 'Synced', syncing: 'Syncing…', error: "Sync failed, retrying",
+    offline: pend ? `Offline, ${pend} change${pend === 1 ? '' : 's'} will sync later` : 'Offline',
+    nolib: 'Offline, saved on this device', off: 'Connecting…'
+  }[S.sync];
+  const sync = S.sync === 'signedout'
+    ? '<button class="linkbtn" data-act="signin">Sign in to sync</button>'
+    : `<span class="sync${S.sync === 'error' ? ' stale' : ''}">${syncTxt || ''}</span>`;
+  const lb = lastBackupLabel(); if (session) lb.stale = false;
+  $('#foot').innerHTML = `
+    <span class="status ${st[0]}"><i></i>${st[1]}</span>
+    ${sync}
+    <span class="sync${lb.stale ? ' stale' : ''}">${lb.text}</span>
+    <span class="spacer"></span>
+    <button class="btn" data-act="backup">Back up</button>
+    <button class="btn" data-act="restore">Restore</button>`;
+}
+
+function boardHTML() {
+  const d = S.date; const lanes = S.lanes;
+  let total = 0, done = 0;
+  for (const l of lanes) for (const t of laneArr(d, l.id)) { total++; if (t.done) done++; }
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const colors = lanes.map((l) => l.color);
+  const grad = colors.length > 1 ? `linear-gradient(90deg, ${colors.join(', ')})` : colors[0] || 'var(--ink)';
+  const bgSize = pct ? `${(10000 / pct).toFixed(1)}% 100%` : '100% 100%';
+  const from = S.lastP == null ? 0 : S.lastP;
+  const isToday = d === todayStr();
+
+  const majors = lanes.filter((l) => l.major), minors = lanes.filter((l) => !l.major);
+  const mSpan = { 1: 6, 2: 3, 3: 2 }[majors.length] || 3;
+  const minorSpans = minors.map((_, i) => {
+    const rem = minors.length % 3; const lastRowStart = minors.length - rem;
+    if (rem && i >= lastRowStart) return 6 / rem; return 2;
+  });
+  const lonely = (list, i) => list.length % 2 === 1 && i === list.length - 1;
+
+  return `
+  <section class="hero">
+    <h1 class="weekday${S.animateHero ? ' enter' : ''}" style="--p:${from}%" data-p="${pct}">${weekday(d)}</h1>
+    <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Done today"><span style="width:${from}%;background:${grad};background-size:${bgSize}"></span></div>
+    <div class="meta">
+      <span class="when">${fullDate(d)} <span class="chip">${relLabel(d)}</span></span>
+      <span class="mono">${done} / ${total} done · ${pct}%</span>
+    </div>
+  </section>
+  <div class="rail">
+    <button class="btn sq" data-act="prev" aria-label="Previous day">${ic('left')}</button>
+    <button class="btn today${isToday ? '' : ' solid'}" data-act="today" ${isToday ? 'disabled' : ''}>Today</button>
+    <input class="datein" type="date" value="${d}" data-datein aria-label="Jump to date">
+    <button class="btn sq" data-act="next" aria-label="Next day">${ic('right')}</button>
+  </div>
+  <div class="board">
+    ${majors.map((l, i) => laneHTML(l, mSpan, true, lonely(majors, i))).join('')}
+    ${minors.map((l, i) => laneHTML(l, minorSpans[i], false, lonely(minors, i) && majors.length % 2 === 0)).join('')}
+  </div>`;
+}
+
+function laneHTML(l, span, major, lone) {
+  const arr = displayOrder(laneArr(S.date, l.id));
+  const dn = arr.filter((t) => t.done).length;
+  const full = arr.length && dn === arr.length;
+  const k = 'add:' + l.id;
+  return `
+  <section class="lane${major ? ' major' : ''}${lone ? ' lone' : ''}" style="--lc:${l.color};--span:${span}" aria-label="${esc(l.name)}">
+    <header class="lane-h"><span class="dot"></span><h2>${esc(l.name)}</h2><span class="count${full ? ' full' : ''}">${dn}/${arr.length}</span></header>
+    ${arr.length ? `<ul class="tasks">${arr.map((t, i) => taskHTML(t, S.date, arr, i)).join('')}</ul>` : '<p class="empty">No tasks yet</p>'}
+    <label class="add"><span class="plus">+</span><input type="text" data-key="${k}" data-add="${l.id}" placeholder="Add a task" value="${esc(S.drafts[k] || '')}" enterkeyhint="done" autocomplete="off" aria-label="Add a task to ${esc(l.name)}"></label>
+  </section>`;
+}
+
+function taskHTML(t, date, arr, i) {
+  const ed = S.editing && S.editing.id === t.id && !S.editing.sub ? S.editing : null;
+  const prev = arr[i - 1], next = arr[i + 1];
+  const canUp = prev && priKey(prev) === priKey(t);
+  const canDown = next && priKey(next) === priKey(t);
+  const open = S.openSubs.has(t.id);
+  const sd = t.subs.filter((s) => s.done).length;
+  const cat = t.cat ? CATS[t.cat] : null;
+  return `
+  <li class="task${t.done ? ' done' : ''}${S.openActions === t.id ? ' open' : ''}${cat ? ' flagged' : ''}" data-id="${t.id}" data-date="${date}"${cat ? ` style="--cc:${cat.color}"` : ''}>
+    <div class="row">
+      <button class="check" data-act="toggle" role="checkbox" aria-checked="${t.done}" aria-label="Done">${ic('check')}</button>
+      ${t.pri ? `<button class="pri" data-act="pri" aria-label="Priority ${t.pri}, change">${t.pri}</button>` : ''}
+      ${ed ? `<input class="edit" data-key="edit:${t.id}" data-edit value="${esc(ed.value)}" enterkeyhint="done" aria-label="Edit task">` : `<span class="text" data-act="tap">${esc(t.text)}</span>`}
+      ${t.subs.length ? `<button class="subchip${sd === t.subs.length ? ' all' : ''}" data-act="subs" aria-expanded="${open}" aria-label="Sub-tasks">${ic(open ? 'chevUp' : 'chevDown')}<span>${sd}/${t.subs.length}</span></button>` : ''}
+    </div>
+    <div class="acts">
+      ${t.subs.length ? '' : `<button data-act="subs" aria-label="Add sub-tasks" title="Sub-tasks">${ic(open ? 'chevUp' : 'sub')}</button>`}
+      <button data-act="pri" aria-label="Priority" title="Priority">${ic('hash')}</button>
+      <button data-act="flag" aria-label="Category" title="Category">${ic('flag')}</button>
+      <button data-act="edit" aria-label="Edit" title="Edit">${ic('pencil')}</button>
+      <button data-act="up" ${canUp ? '' : 'disabled'} aria-label="Move up" title="Move up">${ic('up')}</button>
+      <button data-act="down" ${canDown ? '' : 'disabled'} aria-label="Move down" title="Move down">${ic('down')}</button>
+      <button data-act="del" class="danger" aria-label="Delete" title="Delete">${ic('x')}</button>
+    </div>
+    ${cat ? `<span class="pill">${cat.label}</span>` : ''}
+    ${open ? subsHTML(t) : ''}
+  </li>`;
+}
+
+function subsHTML(t) {
+  const sd = t.subs.filter((s) => s.done).length; const all = t.subs.length && sd === t.subs.length;
+  const k = 'sub:' + t.id;
+  return `
+  <div class="subs">
+    <div class="subs-h"><span>Sub-tasks</span><span class="count${all ? ' full' : ''}">${sd}/${t.subs.length}</span></div>
+    ${t.subs.length ? `<ul>${t.subs.map((s) => {
+      const ed = S.editing && S.editing.id === t.id && S.editing.sub === s.id;
+      return `<li class="sub${s.done ? ' done' : ''}" data-sub="${s.id}">
+        <button class="check" data-act="subtoggle" role="checkbox" aria-checked="${s.done}" aria-label="Done">${ic('check')}</button>
+        ${ed ? `<input class="edit" data-key="edit:${t.id}:${s.id}" data-edit value="${esc(S.editing.value)}" enterkeyhint="done" aria-label="Edit sub-task">` : `<span class="text">${esc(s.text)}</span>`}
+        <span class="sub-acts"><button data-act="subedit" aria-label="Edit">${ic('pencil', 14)}</button><button data-act="subdel" class="danger" aria-label="Delete">${ic('x', 14)}</button></span>
+      </li>`;
+    }).join('')}</ul>` : ''}
+    <input class="subadd" data-key="${k}" data-subadd="${t.id}" placeholder="+ Add a sub-task" value="${esc(S.drafts[k] || '')}" enterkeyhint="done" autocomplete="off">
+  </div>`;
+}
+
+function openHTML() {
+  const groups = S.lanes.map((l) => ({ l, items: [] }));
+  const by = Object.fromEntries(groups.map((g) => [g.l.id, g]));
+  for (const date of Object.keys(S.days)) {
+    for (const [lane, arr] of Object.entries(S.days[date].lanes)) {
+      const g = by[lane]; if (!g) continue;
+      arr.forEach((t, i) => { if (!t.done) g.items.push({ t, date, i }); });
+    }
+  }
+  for (const g of groups) g.items.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || priKey(a.t) - priKey(b.t) || a.i - b.i);
+  const vis = groups.filter((g) => g.items.length);
+  const total = vis.reduce((n, g) => n + g.items.length, 0);
+  if (!total) return `<div class="open-head all-clear"><h1>All clear</h1><p>Nothing open — you are all caught up.</p></div>`;
+  return `
+  <div class="open-head"><h1>Open items</h1><p>${total} open across ${vis.length} lane${vis.length === 1 ? '' : 's'}, oldest first.</p></div>
+  <div class="open-grid">
+    ${vis.map((g) => `
+      <section class="lane" style="--lc:${g.l.color}" aria-label="${esc(g.l.name)}">
+        <header class="lane-h"><span class="dot"></span><h2>${esc(g.l.name)}</h2><span class="count">${g.items.length}</span></header>
+        <ul class="tasks">${g.items.map(({ t, date }) => {
+          const cat = t.cat ? CATS[t.cat] : null;
+          const openSubs = t.subs.filter((s) => !s.done);
+          return `<li class="task oi${cat ? ' flagged' : ''}" data-id="${t.id}" data-date="${date}"${cat ? ` style="--cc:${cat.color}"` : ''}>
+            <div class="row">
+              <button class="check" data-act="toggle" role="checkbox" aria-checked="false" aria-label="Done">${ic('check')}</button>
+              ${t.pri ? `<span class="pri">${t.pri}</span>` : ''}
+              <span class="text">${esc(t.text)}</span>
+            </div>
+            <div class="oi-meta">
+              <button class="datebtn" data-act="goto" title="Open this day">${shortLabel(date)}</button>
+              ${cat ? `<span class="pill">${cat.label}</span>` : ''}
+              <button class="flagbtn" data-act="flag" aria-label="Category">${ic('flag', 14)}</button>
+            </div>
+            ${openSubs.length ? `<div class="subs"><ul>${openSubs.map((s) => `<li class="sub" data-sub="${s.id}"><button class="check" data-act="subtoggle" role="checkbox" aria-checked="false" aria-label="Done">${ic('check')}</button><span class="text">${esc(s.text)}</span></li>`).join('')}</ul></div>` : ''}
+          </li>`;
+        }).join('')}</ul>
+      </section>`).join('')}
+  </div>`;
+}
+
+/* ---------- sheets ---------- */
+function openSheet(sheet, anchorEl) {
+  if (anchorEl) { const r = anchorEl.getBoundingClientRect(); sheet.anchor = { x: r.left, y: r.bottom }; }
+  S.sheet = sheet; render();
+}
+function closeSheet() { S.sheet = null; render(); }
+function renderSheet() {
+  const root = $('#sheetRoot'); const sh = S.sheet;
+  if (!sh) { root.innerHTML = ''; return; }
+  let cls = 'center', style = '', body = '';
+  if (sh.type === 'pri' || sh.type === 'cat') {
+    const f = find(sh.date, sh.id); if (!f) { S.sheet = null; root.innerHTML = ''; return; }
+    const lane = laneById(f.lane);
+    if (sh.anchor) {
+      cls = 'pop';
+      const w = 280, x = Math.max(12, Math.min(sh.anchor.x - 20, window.innerWidth - w - 12));
+      const y = Math.min(sh.anchor.y + 6, window.innerHeight - (sh.type === 'pri' ? 260 : 250));
+      style = `--x:${x}px;--y:${Math.max(12, y)}px;`;
+    }
+    style += `--lc:${lane ? lane.color : 'var(--ink)'}`;
+    if (sh.type === 'pri') {
+      body = `<h3>Priority</h3><div class="prigrid">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-act="setpri" data-v="${n}" aria-pressed="${f.task.pri === n}">${n}</button>`).join('')}</div>
+        <button class="btn wide" data-act="setpri" data-v="0">Clear</button>`;
+    } else {
+      const opts = [...Object.entries(CATS), ['none', { label: 'None', color: 'transparent' }]];
+      body = `<h3>Category</h3><div class="opts">${opts.map(([k, c]) => {
+        const on = k === 'none' ? !f.task.cat : f.task.cat === k;
+        return `<button data-act="setcat" data-v="${k}"><i style="background:${c.color};${k === 'none' ? 'border:1.5px solid var(--ink3)' : ''}"></i>${c.label}${on ? `<span class="tick">${ic('check')}</span>` : ''}</button>`;
+      }).join('')}</div>`;
+    }
+  } else if (sh.type === 'settings') {
+    body = settingsHTML();
+  } else if (sh.type === 'signin') {
+    body = signinHTML();
+  }
+  root.innerHTML = `<div class="scrim" data-act="close"></div><div class="sheet ${cls}" style="${style}" role="dialog" aria-modal="true"><div class="grab"></div>${body}</div>`;
+}
+
+function settingsHTML() {
+  const sh = S.sheet;
+  const nameVal = S.drafts.name != null ? S.drafts.name : S.name;
+  return `
+  <h3>Settings <button class="mini" data-act="close" aria-label="Close">${ic('x')}</button></h3>
+  <div class="set-sec">
+    <label for="nm">Your name</label>
+    <input id="nm" class="tin" data-key="name" data-namein value="${esc(nameVal)}" autocomplete="off">
+  </div>
+  <div class="set-sec">
+    <span class="lbl">Lanes</span>
+    <p class="note">Major lanes sit on top at half width. Removing a lane hides its tasks; they stay in your backups.</p>
+    <div class="lanes-ed">
+      ${S.lanes.map((l, i) => {
+        const k = 'lane:' + l.id; const v = S.drafts[k] != null ? S.drafts[k] : l.name;
+        return `<div>
+          <div class="lane-row">
+            <button class="swatch" style="--sw:${l.color}" data-act="lanecolor" data-lane="${l.id}" aria-label="Change colour"></button>
+            <input class="tin" data-key="${k}" data-lanename="${l.id}" value="${esc(v)}" autocomplete="off" aria-label="Lane name">
+            <button class="tog" data-act="lanemajor" data-lane="${l.id}" aria-pressed="${l.major}">Major</button>
+            <button class="mini" data-act="laneup" data-lane="${l.id}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">${ic('up', 14)}</button>
+            <button class="mini" data-act="lanedown" data-lane="${l.id}" ${i === S.lanes.length - 1 ? 'disabled' : ''} aria-label="Move down">${ic('down', 14)}</button>
+            ${sh.confirmDel === l.id
+              ? `<button class="mini confirm" data-act="lanedel" data-lane="${l.id}">Remove</button>`
+              : `<button class="mini danger" data-act="lanedel" data-lane="${l.id}" ${S.lanes.length < 2 ? 'disabled' : ''} aria-label="Remove lane">${ic('x', 14)}</button>`}
+          </div>
+          ${sh.colorFor === l.id ? `<div class="palette">${PALETTE.map((c) => `<button style="--sw:${c}" data-act="pickcolor" data-lane="${l.id}" data-v="${c}" aria-pressed="${c.toLowerCase() === l.color.toLowerCase()}" aria-label="${c}"></button>`).join('')}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn wide" data-act="laneadd" ${S.lanes.length >= 12 ? 'disabled' : ''}>${ic('plus', 14)} Add lane</button>
+  </div>
+  <div class="set-sec">
+    <span class="lbl">Appearance</span>
+    <div class="seg">
+      <button data-act="theme" data-v="light" aria-pressed="${S.theme === 'light'}">Light</button>
+      <button data-act="theme" data-v="auto" aria-pressed="${S.theme === 'auto'}">Match device</button>
+    </div>
+  </div>
+  <div class="set-sec">
+    <span class="lbl">Sync</span>
+    ${session
+      ? `<p class="note">Signed in as <b>${esc(S.email || '')}</b>. Changes sync to your other devices automatically.</p>
+         <div class="row-btns"><button class="btn" data-act="syncnow">Sync now</button><button class="btn" data-act="signout">Sign out</button></div>`
+      : `<p class="note">Not signed in, so tasks are saved on this device only.</p>
+         <button class="btn solid" data-act="signin">Sign in to sync</button>`}
+  </div>
+  <div class="set-sec">
+    <span class="lbl">Backup</span>
+    <p class="note">A backup file is your safety net. ${esc(lastBackupLabel().text)}.</p>
+    <div class="row-btns"><button class="btn" data-act="backup">Back up</button><button class="btn" data-act="restore">Restore</button></div>
+  </div>`;
+}
+
+function signinHTML() {
+  const sh = S.sheet;
+  return `
+  <h3>Sign in to sync <button class="mini" data-act="close" aria-label="Close">${ic('x')}</button></h3>
+  <p class="note">Use the email and password from your Supabase account. You only do this once per device.</p>
+  <form data-signin novalidate>
+    <label class="flbl" for="si-e">Email</label>
+    <input id="si-e" class="tin" type="email" name="email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" data-key="si-email" data-siin value="${esc(S.drafts['si-email'] || '')}">
+    <label class="flbl" for="si-p">Password</label>
+    <input id="si-p" class="tin" type="password" name="password" autocomplete="current-password" data-key="si-pass" data-siin value="${esc(S.drafts['si-pass'] || '')}">
+    ${sh.err ? `<p class="err" role="alert">${esc(sh.err)}</p>` : ''}
+    <button class="btn solid wide" type="submit" ${sh.busy ? 'disabled' : ''}>${sh.busy ? 'Signing in…' : 'Sign in'}</button>
+  </form>
+  <button class="btn plain wide" data-act="close">Not now</button>`;
+}
+
+/* ================= toast ================= */
+let toastT = null;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* ================= editing ================= */
+function startEdit(date, id, sub) {
+  const f = find(date, id); if (!f) return;
+  const target = sub ? f.task.subs.find((s) => s.id === sub) : f.task; if (!target) return;
+  if (S.editing) commitEdit(true);
+  S.editing = { date, id, sub: sub || null, value: target.text };
+  S.pendingFocus = sub ? `edit:${id}:${sub}` : `edit:${id}`;
+  render();
+  const el = document.querySelector(`[data-key="${CSS.escape(sub ? `edit:${id}:${sub}` : `edit:${id}`)}"]`);
+  if (el) { const n = el.value.length; try { el.setSelectionRange(n, n); } catch (e) {} }
+}
+function commitEdit(silent) {
+  const e = S.editing; if (!e) return;
+  S.editing = null;
+  const v = e.value.trim().slice(0, 1000);
+  const f = find(e.date, e.id);
+  let changed = false;
+  if (f && v) {
+    const target = e.sub ? f.task.subs.find((s) => s.id === e.sub) : f.task;
+    if (target && target.text !== v) { target.text = v; changed = true; }
+  }
+  if (changed) { cleanup(e.date); markDirty(e.date); }
+  if (!silent) render();
+}
+function cancelEdit() { S.editing = null; render(); }
+
+/* ================= actions ================= */
+function addTask(lane, raw) {
+  const text = normText(raw); if (!text) return;
+  laneArr(S.date, lane, true).push({ id: uid(), text, done: false, pri: null, cat: null, subs: [] });
+  S.drafts['add:' + lane] = '';
+  commit(S.date);
+}
+function addSub(id, raw) {
+  const text = normText(raw); if (!text) return;
+  const f = find(S.date, id); if (!f) return;
+  f.task.subs.push({ id: uid(), text, done: false });
+  S.drafts['sub:' + id] = '';
+  commit(S.date);
+}
+function moveTask(date, id, dir) {
+  const f = find(date, id); if (!f) return;
+  const order = displayOrder(f.arr); const pos = order.indexOf(f.task);
+  const other = order[pos + dir]; if (!other || priKey(other) !== priKey(f.task)) return;
+  const j = f.arr.indexOf(other);
+  [f.arr[f.idx], f.arr[j]] = [f.arr[j], f.arr[f.idx]];
+  commit(date);
+}
+function commitLaneName(id) {
+  const k = 'lane:' + id; if (S.drafts[k] == null) return;
+  const l = laneById(id); const v = normText(S.drafts[k]).slice(0, 60);
+  delete S.drafts[k];
+  if (l && v && v !== l.name) { l.name = v; saveProfile(); }
+  render();
+}
+function commitName() {
+  if (S.drafts.name == null) return;
+  const v = normText(S.drafts.name).slice(0, 60); delete S.drafts.name;
+  if (v && v !== S.name) { S.name = v; saveProfile(); }
+  render();
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el) {
+    if (S.openActions && !e.target.closest('.task')) { S.openActions = null; render(); }
+    return;
+  }
+  const act = el.dataset.act;
+  const li = el.closest('[data-id]');
+  const id = li ? li.dataset.id : null;
+  const date = li ? li.dataset.date : S.date;
+  const subEl = el.closest('[data-sub]');
+  const sh = S.sheet;
+  const f = id ? find(date, id) : null;
+
+  switch (act) {
+    case 'tap':
+      if (COARSE.matches) { S.openActions = S.openActions === id ? null : id; render(); }
+      break;
+    case 'toggle': if (f) { f.task.done = !f.task.done; commit(date); } break;
+    case 'edit': startEdit(date, id); break;
+    case 'del':
+      if (f) { f.arr.splice(f.idx, 1); S.openSubs.delete(id); if (S.openActions === id) S.openActions = null; commit(date); toast('Task deleted'); }
+      break;
+    case 'up': moveTask(date, id, -1); break;
+    case 'down': moveTask(date, id, 1); break;
+    case 'pri': openSheet({ type: 'pri', id, date }, COARSE.matches ? null : el); break;
+    case 'flag': openSheet({ type: 'cat', id, date }, COARSE.matches ? null : el); break;
+    case 'setpri': {
+      const g = sh && find(sh.date, sh.id); if (!g) break;
+      const v = Number(el.dataset.v) || null;
+      g.task.pri = v && g.task.pri === v ? null : v;
+      S.sheet = null; commit(sh.date); break;
+    }
+    case 'setcat': {
+      const g = sh && find(sh.date, sh.id); if (!g) break;
+      const v = el.dataset.v === 'none' ? null : el.dataset.v;
+      g.task.cat = v && g.task.cat === v ? null : v;
+      S.sheet = null; commit(sh.date); break;
+    }
+    case 'subs':
+      if (S.openSubs.has(id)) S.openSubs.delete(id);
+      else { S.openSubs.add(id); if (f && !f.task.subs.length) S.pendingFocus = 'sub:' + id; }
+      render(); break;
+    case 'subtoggle': {
+      if (!f || !subEl) break; const s = f.task.subs.find((x) => x.id === subEl.dataset.sub);
+      if (s) { s.done = !s.done; commit(date); } break;
+    }
+    case 'subedit': if (subEl) startEdit(date, id, subEl.dataset.sub); break;
+    case 'subdel': {
+      if (!f || !subEl) break; const i = f.task.subs.findIndex((x) => x.id === subEl.dataset.sub);
+      if (i > -1) { f.task.subs.splice(i, 1); commit(date); } break;
+    }
+    case 'view':
+      if (S.editing) commitEdit(true);
+      S.view = el.dataset.v; S.openActions = null; if (S.view === 'board') { S.lastP = 0; S.animateHero = true; }
+      render(); window.scrollTo(0, 0); break;
+    case 'prev': setDate(addDays(S.date, -1)); break;
+    case 'next': setDate(addDays(S.date, 1)); break;
+    case 'today': setDate(todayStr()); break;
+    case 'goto': S.view = 'board'; setDate(date); window.scrollTo(0, 0); break;
+    case 'settings': openSheet({ type: 'settings' }); break;
+    case 'close': S.drafts.name = undefined; closeSheet(); break;
+    case 'backup': backup(); break;
+    case 'restore': $('#restoreFile').click(); break;
+    case 'lanecolor': sh.colorFor = sh.colorFor === el.dataset.lane ? null : el.dataset.lane; sh.confirmDel = null; render(); break;
+    case 'pickcolor': { const l = laneById(el.dataset.lane); if (l) { l.color = el.dataset.v; sh.colorFor = null; saveProfile(); render(); } break; }
+    case 'lanemajor': { const l = laneById(el.dataset.lane); if (l) { l.major = !l.major; saveProfile(); render(); } break; }
+    case 'laneup': case 'lanedown': {
+      const i = S.lanes.findIndex((l) => l.id === el.dataset.lane); const j = i + (act === 'laneup' ? -1 : 1);
+      if (i > -1 && j >= 0 && j < S.lanes.length) { [S.lanes[i], S.lanes[j]] = [S.lanes[j], S.lanes[i]]; saveProfile(); render(); }
+      break;
+    }
+    case 'lanedel':
+      if (sh.confirmDel === el.dataset.lane) { S.lanes = S.lanes.filter((l) => l.id !== el.dataset.lane); sh.confirmDel = null; saveProfile(); render(); }
+      else { sh.confirmDel = el.dataset.lane; sh.colorFor = null; render(); }
+      break;
+    case 'laneadd': {
+      const used = new Set(S.lanes.map((l) => l.color.toLowerCase()));
+      const color = PALETTE.find((c) => !used.has(c.toLowerCase())) || PALETTE[S.lanes.length % PALETTE.length];
+      const nl = { id: uid(), name: 'New lane', color, major: false };
+      S.lanes.push(nl); S.pendingFocus = 'lane:' + nl.id; saveProfile(); render();
+      const inp = document.querySelector(`[data-key="lane:${nl.id}"]`); if (inp) inp.select();
+      break;
+    }
+    case 'signin': openSheet({ type: 'signin' }); break;
+    case 'signout': signOut(); break;
+    case 'syncnow': Sync.pull(); toast('Syncing…'); break;
+    case 'theme':
+      S.theme = el.dataset.v === 'auto' ? 'auto' : 'light';
+      try { localStorage.setItem(LS + 'theme', S.theme); } catch (err) {}
+      applyTheme(); render(); break;
+  }
+});
+
+document.addEventListener('dblclick', (e) => {
+  const tx = e.target.closest('.text'); if (!tx) return;
+  const li = tx.closest('[data-id]'); if (!li || li.classList.contains('oi')) return;
+  const sub = tx.closest('[data-sub]');
+  startEdit(li.dataset.date, li.dataset.id, sub ? sub.dataset.sub : null);
+});
+
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.matches('[data-edit]')) { if (S.editing) S.editing.value = t.value; return; }
+  if (t.matches('[data-add],[data-subadd],[data-lanename],[data-namein],[data-siin]')) S.drafts[t.dataset.key] = t.value;
+});
+
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.matches('[data-datein]') && DAY_RE.test(t.value)) setDate(t.value);
+});
+
+document.addEventListener('keydown', (e) => {
+  const t = e.target;
+  const enter = e.key === 'Enter' && !e.isComposing;
+  if (t.matches && t.matches('[data-add]') && enter) { e.preventDefault(); addTask(t.dataset.add, t.value); return; }
+  if (t.matches && t.matches('[data-subadd]') && enter) { e.preventDefault(); addSub(t.dataset.subadd, t.value); return; }
+  if (t.matches && t.matches('[data-edit]')) {
+    if (enter) { e.preventDefault(); commitEdit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+    return;
+  }
+  if (t.matches && t.matches('[data-lanename],[data-namein]') && enter) { e.preventDefault(); t.blur(); return; }
+  if (e.key === 'Escape' && S.sheet) { S.drafts.name = undefined; closeSheet(); return; }
+  const typing = t.matches && t.matches('input, textarea, select, [contenteditable]');
+  if (!typing && !S.sheet && S.view === 'board' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    if (e.key === 'ArrowLeft') setDate(addDays(S.date, -1));
+    if (e.key === 'ArrowRight') setDate(addDays(S.date, 1));
+  }
+});
+
+document.addEventListener('focusout', (e) => {
+  if (rendering) return;
+  const t = e.target; const rt = e.relatedTarget;
+  const keep = rt && rt.dataset && rt.dataset.key ? rt.dataset.key : null;
+  if (t.matches('[data-edit]') && S.editing) { S.pendingFocus = keep; commitEdit(); return; }
+  if (t.matches('[data-lanename]')) { S.pendingFocus = keep; commitLaneName(t.dataset.lanename); return; }
+  if (t.matches('[data-namein]')) { S.pendingFocus = keep; commitName(); }
+});
+
+/* swipe between days on the board */
+let sx = null, sy = null, st = 0;
+$('#main').addEventListener('touchstart', (e) => {
+  if (S.view !== 'board' || e.touches.length !== 1 || e.target.closest('input')) { sx = null; return; }
+  sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
+}, { passive: true });
+$('#main').addEventListener('touchend', (e) => {
+  if (sx == null) return;
+  const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+  sx = null;
+  if (Math.abs(dx) > 70 && Math.abs(dy) < 45 && Date.now() - st < 700) setDate(addDays(S.date, dx < 0 ? 1 : -1));
+}, { passive: true });
+
+/* ================= backup & restore ================= */
+function lastBackupLabel() {
+  let t = null; try { t = Number(localStorage.getItem(LS + 'lastBackup')) || null; } catch (e) {}
+  if (!t) return { text: 'No backup yet', stale: Object.keys(S.days).length > 0 };
+  const days = Math.floor((Date.now() - t) / 864e5);
+  return { text: days === 0 ? 'Backed up today' : days === 1 ? 'Last backup yesterday' : `Last backup ${days} days ago`, stale: days >= 7 };
+}
+function markBackedUp() { try { localStorage.setItem(LS + 'lastBackup', String(Date.now())); } catch (e) {} render(); }
+async function backup() {
+  const days = {};
+  for (const [d, day] of Object.entries(S.days)) if (!isEmptyDay(day)) days[d] = day;
+  const payload = { app: 'Daily Task Tracker', version: 1, exportedAt: new Date().toISOString(), name: S.name, lanes: S.lanes, days };
+  const json = JSON.stringify(payload, null, 2);
+  const filename = `daily-task-tracker-backup-${todayStr()}.json`;
+  const file = new File([json], filename, { type: 'application/json' });
+  if (COARSE.matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Tracker backup' }); markBackedUp(); toast('Backup saved'); }
+    catch (e) { if (e && e.name !== 'AbortError') toast("Couldn't share the backup. Try again."); }
+    return;
+  }
+  try {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+    markBackedUp(); toast('Backup downloaded');
+  } catch (e) { toast("Couldn't save the backup here."); }
+}
+$('#restoreFile').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let obj;
+    try { obj = JSON.parse(reader.result); } catch (err) { toast("That file isn't a tracker backup."); return; }
+    if (!obj || typeof obj !== 'object') { toast("That file isn't a tracker backup."); return; }
+    let src = obj.days && typeof obj.days === 'object' ? obj.days : null;
+    if (!src) { src = {}; for (const k of Object.keys(obj)) { const m = /^(?:board:)?(\d{4}-\d{2}-\d{2})$/.exec(k); if (m) src[m[1]] = obj[k]; } }
+    let n = 0;
+    for (const [d, v] of Object.entries(src)) {
+      if (!DAY_RE.test(d)) continue;
+      const day = normDay(v); if (isEmptyDay(day)) continue;
+      S.days[d] = day; markDirty(d); n++;
+    }
+    if (Array.isArray(obj.lanes) && obj.lanes.length) S.lanes = normLanes(obj.lanes);
+    if (typeof obj.name === 'string' && obj.name.trim()) S.name = obj.name.trim().slice(0, 60);
+    if (!n && !Array.isArray(obj.lanes)) { toast('No saved days found in that file.'); return; }
+    saveProfile(); autoOpenSubs(S.date); S.sheet = null; render();
+    toast(`Restored ${n} day${n === 1 ? '' : 's'}`);
+  };
+  reader.onerror = () => toast("Couldn't read that file.");
+  reader.readAsText(file);
+});
+
+document.addEventListener('submit', async (e) => {
+  const form = e.target; if (!form.matches('[data-signin]')) return;
+  e.preventDefault();
+  const sh = S.sheet; if (!sh) return;
+  const email = (S.drafts['si-email'] || form.email.value || '').trim();
+  const password = S.drafts['si-pass'] || form.password.value || '';
+  if (!email || !password) { sh.err = 'Enter your email and password.'; render(); return; }
+  if (!sb) { sh.err = "Can't reach the sync service. Check your connection and try again."; render(); initSync(); return; }
+  sh.busy = true; sh.err = null; render();
+  let error = null;
+  try { ({ error } = await sb.auth.signInWithPassword({ email, password })); } catch (err) { error = err; }
+  if (S.sheet !== sh) return;
+  if (error) {
+    sh.busy = false;
+    sh.err = /invalid/i.test(error.message || '') ? 'Wrong email or password.' : navigator.onLine === false ? "You're offline. Connect and try again." : (error.message || 'Sign-in failed. Try again.');
+    render(); return;
+  }
+  delete S.drafts['si-pass'];
+  S.sheet = null; render(); toast('Signed in. Syncing…');
+});
+window.addEventListener('online', () => { setSync(); Sync.pull(); });
+window.addEventListener('offline', () => setSync('offline'));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - Sync.lastPull > 15000) Sync.pull();
+});
+setInterval(() => { if (document.visibilityState === 'visible') Sync.pull(); }, 120000);
+
+/* ================= boot ================= */
+$('#gear').innerHTML = ic('gear');
+loadLocal();
+applyTheme(); applyGlows();
+autoOpenSubs(S.date);
+render();
+window.addEventListener('resize', fitWeekday);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitWeekday);
+setInterval(() => { $('#greet').textContent = greeting(); }, 60000);
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+initSync();
+})();
+</script>
+</body>
+</html>
