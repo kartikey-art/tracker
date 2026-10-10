@@ -175,10 +175,15 @@ input.edit { flex: 1; min-width: 0; font: inherit; color: var(--ink); border: 1.
 .sub.done .text { text-decoration: line-through; color: var(--ink3); }
 .sub-acts { display: flex; gap: 1px; }
 .sub-acts button { width: 24px; height: 24px; }
-.subadd { width: 100%; border: 0; border-top: 1px dashed var(--line); background: transparent; font: inherit; font-size: 14px; color: var(--ink); padding: 7px 0 3px; outline: none; }
+.subadd { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 14px; color: var(--ink); padding: 6px 0; outline: none; }
 
-.add { display: flex; align-items: center; gap: 8px; margin-top: auto; padding: 8px 6px 4px; border-top: 1px dashed var(--line); color: var(--ink3); cursor: text; }
-.add .plus { font: 500 16px/1 var(--f-mono); width: 20px; text-align: center; }
+.add { display: flex; align-items: center; gap: 6px; margin: auto 0 0; padding: 6px 2px 2px; border-top: 1px dashed var(--line); color: var(--ink3); }
+.plus { flex: none; width: 30px; height: 30px; border: 0; border-radius: 9px; background: transparent; color: var(--ink3); display: grid; place-items: center; padding: 0; }
+form:has(input:not(:placeholder-shown)) .plus { background: var(--lc, var(--ink)); color: #fff; }
+.subaddf { display: flex; align-items: center; gap: 6px; border-top: 1px dashed var(--line); margin-top: 2px; padding-top: 4px; }
+.subaddf .plus { width: 26px; height: 26px; border-radius: 7px; }
+[data-goalform] { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.goalbtn { height: 36px; padding: 0 14px; }
 .add input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--ink); padding: 6px 0; outline: none; }
 ::placeholder { color: var(--ink3); opacity: 1; }
 
@@ -294,6 +299,8 @@ input.edit { flex: 1; min-width: 0; font: inherit; color: var(--ink); border: 1.
   .pill, .oi-meta { margin-left: 32px; }
   .subs { margin-left: 32px; }
   .add input, .subadd { font-size: 16px; }
+  .plus { width: 40px; height: 40px; border-radius: 11px; }
+  .subaddf .plus { width: 36px; height: 36px; }
   .goal-add select, .goal-add input { font-size: 16px; }
   input.edit, .tin { font-size: 16px; }
 }
@@ -907,7 +914,10 @@ function laneHTML(l, span, major, lone) {
   <section class="lane${major ? ' major' : ''}${lone ? ' lone' : ''}" style="--lc:${l.color};--span:${span}" aria-label="${esc(l.name)}">
     <header class="lane-h"><span class="dot"></span><h2>${esc(l.name)}</h2><span class="count${full ? ' full' : ''}">${dn}/${arr.length}</span></header>
     ${arr.length ? `<ul class="tasks">${arr.map((t, i) => taskHTML(t, S.date, arr, i)).join('')}</ul>` : '<p class="empty">No tasks yet</p>'}
-    <label class="add"><span class="plus">+</span><input type="text" data-key="${k}" data-add="${l.id}" placeholder="Add a task" value="${esc(S.drafts[k] || '')}" enterkeyhint="done" autocomplete="off" aria-label="Add a task to ${esc(l.name)}"></label>
+    <form class="add" data-addform="${l.id}" action="#" novalidate>
+      <button type="submit" class="plus" aria-label="Add task to ${esc(l.name)}">${ic('plus', 16)}</button>
+      <input type="text" data-key="${k}" data-add="${l.id}" placeholder="Add a task" value="${esc(S.drafts[k] || '')}" enterkeyhint="send" autocomplete="off" aria-label="Add a task to ${esc(l.name)}">
+    </form>
   </section>`;
 }
 
@@ -955,7 +965,10 @@ function subsHTML(t) {
         <span class="sub-acts"><button data-act="subedit" aria-label="Edit">${ic('pencil', 14)}</button><button data-act="subdel" class="danger" aria-label="Delete">${ic('x', 14)}</button></span>
       </li>`;
     }).join('')}</ul>` : ''}
-    <input class="subadd" data-key="${k}" data-subadd="${t.id}" placeholder="+ Add a sub-task" value="${esc(S.drafts[k] || '')}" enterkeyhint="done" autocomplete="off">
+    <form class="subaddf" data-subform="${t.id}" action="#" novalidate>
+      <button type="submit" class="plus" aria-label="Add sub-task">${ic('plus', 14)}</button>
+      <input class="subadd" data-key="${k}" data-subadd="${t.id}" placeholder="Add a sub-task" value="${esc(S.drafts[k] || '')}" enterkeyhint="send" autocomplete="off">
+    </form>
   </div>`;
 }
 
@@ -1060,7 +1073,10 @@ function weekHTML() {
   <div class="goal-add" style="--lc:${(by[S.goalLane] && by[S.goalLane].l.color) || wcol}">
     <span class="dot"></span>
     <select data-goallane aria-label="Lane">${S.lanes.map((l) => `<option value="${l.id}"${l.id === S.goalLane ? ' selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
-    <input type="text" data-key="goal" data-goaladd placeholder="Add a weekly goal" value="${esc(S.drafts.goal || '')}" enterkeyhint="done" autocomplete="off" aria-label="New weekly goal">
+    <form data-goalform action="#" novalidate>
+      <input type="text" data-key="goal" data-goaladd placeholder="Add a weekly goal" value="${esc(S.drafts.goal || '')}" enterkeyhint="send" autocomplete="off" aria-label="New weekly goal">
+      <button type="submit" class="btn solid goalbtn">Add</button>
+    </form>
   </div>
   ${carried.length ? `
   <section class="lane carried" style="--lc:${wcol}">
@@ -1384,9 +1400,6 @@ document.addEventListener('change', (e) => {
 document.addEventListener('keydown', (e) => {
   const t = e.target;
   const enter = e.key === 'Enter' && !e.isComposing;
-  if (t.matches && t.matches('[data-add]') && enter) { e.preventDefault(); addTask(t.dataset.add, t.value); return; }
-  if (t.matches && t.matches('[data-subadd]') && enter) { e.preventDefault(); addSub(t.dataset.subadd, t.value); return; }
-  if (t.matches && t.matches('[data-goaladd]') && enter) { e.preventDefault(); addGoal(t.value); return; }
   if (t.matches && t.matches('[data-edit]')) {
     if (enter) { e.preventDefault(); commitEdit(); }
     else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
@@ -1486,7 +1499,19 @@ $('#restoreFile').addEventListener('change', (e) => {
 });
 
 document.addEventListener('submit', async (e) => {
-  const form = e.target; if (!form.matches('[data-signin]')) return;
+  const form = e.target;
+  if (form.matches('[data-addform],[data-subform],[data-goalform]')) {
+    e.preventDefault();
+    const inp = form.querySelector('input');
+    const val = inp ? inp.value : '';
+    if (!normText(val)) { if (inp) inp.focus(); return; }
+    if (inp) S.pendingFocus = inp.dataset.key;
+    if (form.matches('[data-addform]')) addTask(form.dataset.addform, val);
+    else if (form.matches('[data-subform]')) addSub(form.dataset.subform, val);
+    else addGoal(val);
+    return;
+  }
+  if (!form.matches('[data-signin]')) return;
   e.preventDefault();
   const sh = S.sheet; if (!sh) return;
   const email = (S.drafts['si-email'] || form.email.value || '').trim();
